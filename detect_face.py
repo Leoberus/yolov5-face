@@ -5,6 +5,8 @@ from pathlib import Path
 import sys
 import os
 import math
+from IPython.display import Image
+import time
 
 import numpy as np
 import cv2
@@ -26,6 +28,7 @@ from utils.general import check_img_size, non_max_suppression_face, apply_classi
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized
 
+multi_face = []
 
 def load_model(weights, device):
     model = attempt_load(weights, map_location=device)  # load FP32 model
@@ -77,11 +80,11 @@ def calculate_rotate(landmarks):
 
     # finding rotation direction
     if left_eye_y > right_eye_y:
-        print("Rotate image to clock direction")
+        # print("Rotate image to clock direction")
         point_3rd = (right_eye_x, left_eye_y)
         direction = -1  # rotate image direction to clock
     else:
-        print("Rotate to inverse clock direction")
+        # print("Rotate to inverse clock direction")
         point_3rd = (left_eye_x, right_eye_y)
         direction = 1  # rotate inverse direction of clock
     
@@ -91,24 +94,30 @@ def calculate_rotate(landmarks):
     cos_a = (b*b + c*c - a*a)/(2*b*c)
     angle = (np.arccos(cos_a) * 180) / math.pi
 
+    if direction == -1:
+        angle = 90 - angle
+    # else:
+    #     angle = -(90-angle)
+ 
+
     return angle,direction
 
 
 
 
-def show_results(img, xyxy, conf, landmarks, class_num):
+def show_results(ori_img,img, xyxy, conf, landmarks, class_num,crop_path):
     h,w,c = img.shape
     tl = 1 or round(0.002 * (h + w) / 2) + 1  # line/font thickness
     x1 = int(xyxy[0])
     y1 = int(xyxy[1])
     x2 = int(xyxy[2])
     y2 = int(xyxy[3])
-    img = img.copy()
-    img_crop = img.copy()
 
-    angle,direction = calculate_rotate(landmarks)
-    #img_crop = img_crop[x1:y1 , x2:y2]
-    img_crop = rotate_image(img_crop, angle * direction)
+    img = img.copy()
+    img_crop = ori_img.copy()
+    
+ 
+
     
     cv2.rectangle(img, (x1,y1), (x2, y2), (0,255,0), thickness=tl, lineType=cv2.LINE_AA)
     clors = [(255,0,0),(0,255,0),(0,0,255),(255,255,0),(0,255,255)]
@@ -117,6 +126,15 @@ def show_results(img, xyxy, conf, landmarks, class_num):
         point_x = int(landmarks[2 * i])
         point_y = int(landmarks[2 * i + 1])
         cv2.circle(img, (point_x, point_y), tl+1, clors[i], -1)
+        cv2.circle(img_crop, (point_x, point_y), tl+1, clors[i], -1)
+
+    angle,direction = calculate_rotate(landmarks)
+
+    # cv2.circle(img, (point_x, point_y), tl+1, clors[i], -1)
+
+    img_crop = img_crop[y1:y2 , x1:x2]
+    img_crop = rotate_image(img_crop, angle * direction)
+    cv2.imwrite(crop_path, img_crop)
 
     tf = max(tl - 1, 1)  # font thickness
     label = str(conf)[:5]
@@ -203,7 +221,8 @@ def detect(
             
             p = Path(p)  # to Path
             save_path = str(Path(save_dir) / p.name)  # im.jpg
-            crop_path = str(Path(save_dir) / Path('crop_'+str(p.name)))  # crop_im.jpg
+            
+
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
@@ -214,23 +233,26 @@ def detect(
 
                 det[:, 5:15] = scale_coords_landmarks(img.shape[2:], det[:, 5:15], im0.shape).round()
 
-                for j in range(det.size()[0]):
+                ori_img = im0.copy()
+                for j in range(det.size()[0]):  # this loop for each face in image
                     xyxy = det[j, :4].view(-1).tolist()
                     conf = det[j, 4].cpu().numpy()
                     landmarks = det[j, 5:15].view(-1).tolist()
                     class_num = det[j, 15].cpu().numpy()
+
+                    crop_path = str(Path(save_dir) / Path(str(j)+'_'+str(p.name)))  # crop_im.jpg
                     
-                    im0 = show_results(im0, xyxy, conf, landmarks, class_num)
+                    im0 = show_results(ori_img,im0, xyxy, conf, landmarks, class_num,crop_path)
             
             if view_img:
                 cv2.imshow('result', im0)
                 k = cv2.waitKey(1)
-                    
+    
             # Save results (image with detections)
             if save_img:
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)
-                    # cv2.imwrite(crop_path, c_im0)
+
                 else:  # 'video' or 'stream'
                     if vid_path[i] != save_path:  # new video
                         vid_path[i] = save_path
