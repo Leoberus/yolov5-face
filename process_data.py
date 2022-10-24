@@ -212,13 +212,10 @@ def detect(
             # Process detections
             for i, det in enumerate(pred):  # detections per image
                 
-                if webcam:  # batch_size >= 1
-                    p, im0, frame = path[i], im0s[i].copy(), dataset.count
-                else:
-                    p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
+                p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
                 
                 p = Path(p)  # to Path
-                save_path = str(Path(save_dir) / p.name)  # im.jpg
+                # save_path = str(Path(save_dir) / p.name)  # im.jpg
                 
 
                 if len(det):
