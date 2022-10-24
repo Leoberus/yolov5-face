@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 import sys
 import os
+import math
 
 import numpy as np
 import cv2
@@ -56,6 +57,11 @@ def scale_coords_landmarks(img1_shape, coords, img0_shape, ratio_pad=None):
     coords[:, 9].clamp_(0, img0_shape[0])  # y5
     return coords
 
+# Calculate the length of all the edges
+def trignometry_for_distance(a, b):
+    return math.sqrt(((b[0] - a[0]) * (b[0] - a[0])) \
+                     + ((b[1] - a[1]) * (b[1] - a[1])))
+
 def show_results(img, xyxy, conf, landmarks, class_num):
     h,w,c = img.shape
     tl = 1 or round(0.002 * (h + w) / 2) + 1  # line/font thickness
@@ -64,8 +70,32 @@ def show_results(img, xyxy, conf, landmarks, class_num):
     x2 = int(xyxy[2])
     y2 = int(xyxy[3])
     img = img.copy()
-    
+
     cv2.rectangle(img, (x1,y1), (x2, y2), (0,255,0), thickness=tl, lineType=cv2.LINE_AA)
+    
+    left_eye_x = int(landmarks[0])
+    left_eye_y = int(landmarks[1])
+
+    right_eye_x = int(landmarks[2])
+    right_eye_y = int(landmarks[3])
+
+    # finding rotation direction
+    if left_eye_y > right_eye_y:
+        print("Rotate image to clock direction")
+        point_3rd = (right_eye_x, left_eye_y)
+        direction = -1  # rotate image direction to clock
+    else:
+        print("Rotate to inverse clock direction")
+        point_3rd = (left_eye_x, right_eye_y)
+        direction = 1  # rotate inverse direction of clock
+    
+    a = trignometry_for_distance((left_eye_x,left_eye_y), point_3rd)
+    b = trignometry_for_distance((right_eye_x,right_eye_y), point_3rd)
+    c = trignometry_for_distance((right_eye_x,right_eye_y), (left_eye_x,left_eye_y))
+    cos_a = (b*b + c*c - a*a)/(2*b*c)
+    angle = (np.arccos(cos_a) * 180) / math.pi
+
+    img = np.array(img.rotate(direction * angle))
 
     clors = [(255,0,0),(0,255,0),(0,0,255),(255,255,0),(0,255,255)]
 
