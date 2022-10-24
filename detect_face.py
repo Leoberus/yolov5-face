@@ -126,7 +126,6 @@ def show_results(ori_img,img, xyxy, conf, landmarks, class_num,crop_path):
         point_x = int(landmarks[2 * i])
         point_y = int(landmarks[2 * i + 1])
         cv2.circle(img, (point_x, point_y), tl+1, clors[i], -1)
-        cv2.circle(img_crop, (point_x, point_y), tl+1, clors[i], -1)
 
     angle,direction = calculate_rotate(landmarks)
 
@@ -251,8 +250,9 @@ def detect(
             # Save results (image with detections)
             if save_img:
                 if dataset.mode == 'image':
-                    cv2.imwrite(save_path, im0)
-
+                    if len(pred[0]) > 0 : # if predict no one face, don't save image
+                        cv2.imwrite(save_path, im0)
+  
                 else:  # 'video' or 'stream'
                     if vid_path[i] != save_path:  # new video
                         vid_path[i] = save_path
