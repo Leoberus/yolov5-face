@@ -62,6 +62,13 @@ def trignometry_for_distance(a, b):
     return math.sqrt(((b[0] - a[0]) * (b[0] - a[0])) \
                      + ((b[1] - a[1]) * (b[1] - a[1])))
 
+def rotate_image(image, angle):
+  image_center = tuple(np.array(image.shape[1::-1]) / 2)
+  rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+  result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+  return result
+
+
 def show_results(img, xyxy, conf, landmarks, class_num):
     h,w,c = img.shape
     tl = 1 or round(0.002 * (h + w) / 2) + 1  # line/font thickness
@@ -95,7 +102,7 @@ def show_results(img, xyxy, conf, landmarks, class_num):
     cos_a = (b*b + c*c - a*a)/(2*b*c)
     angle = (np.arccos(cos_a) * 180) / math.pi
 
-    img = np.array(img.rotate(direction * angle))
+    img = rotate_image(img, angle * direction)
 
     clors = [(255,0,0),(0,255,0),(0,0,255),(255,255,0),(0,255,255)]
 
