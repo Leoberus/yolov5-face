@@ -161,7 +161,7 @@ def detect(
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
     Path(save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 
-    is_file = Path(source).suffix[1:] in (img_formats + vid_formats)
+    is_file = Path(source).suffix[1:] in (img_formats)
     
     bs = 1
 
