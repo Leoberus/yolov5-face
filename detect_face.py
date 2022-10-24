@@ -68,18 +68,7 @@ def rotate_image(image, angle):
   result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
   return result
 
-
-def show_results(img, xyxy, conf, landmarks, class_num):
-    h,w,c = img.shape
-    tl = 1 or round(0.002 * (h + w) / 2) + 1  # line/font thickness
-    x1 = int(xyxy[0])
-    y1 = int(xyxy[1])
-    x2 = int(xyxy[2])
-    y2 = int(xyxy[3])
-    img = img.copy()
-
-    cv2.rectangle(img, (x1,y1), (x2, y2), (0,255,0), thickness=tl, lineType=cv2.LINE_AA)
-    
+def calculate_rotate(landmarks):
     left_eye_x = int(landmarks[0])
     left_eye_y = int(landmarks[1])
 
@@ -102,8 +91,26 @@ def show_results(img, xyxy, conf, landmarks, class_num):
     cos_a = (b*b + c*c - a*a)/(2*b*c)
     angle = (np.arccos(cos_a) * 180) / math.pi
 
-    img = rotate_image(img, angle * direction)
+    return angle,direction
 
+
+
+
+def show_results(img, xyxy, conf, landmarks, class_num):
+    h,w,c = img.shape
+    tl = 1 or round(0.002 * (h + w) / 2) + 1  # line/font thickness
+    x1 = int(xyxy[0])
+    y1 = int(xyxy[1])
+    x2 = int(xyxy[2])
+    y2 = int(xyxy[3])
+    img = img.copy()
+    img_crop = img.copy()
+
+    angle,direction = calculate_rotate(landmarks)
+    #img_crop = img_crop[x1:y1 , x2:y2]
+    img_crop = rotate_image(img_crop, angle * direction)
+    
+    cv2.rectangle(img, (x1,y1), (x2, y2), (0,255,0), thickness=tl, lineType=cv2.LINE_AA)
     clors = [(255,0,0),(0,255,0),(0,0,255),(255,255,0),(0,255,255)]
 
     for i in range(5):
@@ -196,7 +203,7 @@ def detect(
             
             p = Path(p)  # to Path
             save_path = str(Path(save_dir) / p.name)  # im.jpg
-
+            crop_path = str(Path(save_dir) / Path('crop_'+str(p.name)))  # crop_im.jpg
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
@@ -223,6 +230,7 @@ def detect(
             if save_img:
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)
+                    # cv2.imwrite(crop_path, c_im0)
                 else:  # 'video' or 'stream'
                     if vid_path[i] != save_path:  # new video
                         vid_path[i] = save_path
